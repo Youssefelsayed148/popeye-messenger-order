@@ -44,9 +44,27 @@ export function welcomeMessageWithMenuButton(): MessengerMessage {
 
 export function howToOrderMessage(): MessengerMessage {
   const text =
-    "عندك طريقتين تطلب من مطعم باباي:\n\n📞 الخط الساخن: 19099\nأو اطلب أونلاين من اللينك ده 👇";
+    "🍗 اطلب في دقيقة واحدة!\n" +
+    "1️⃣ دوس على الزرار تحت وافتح المنيو\n" +
+    "2️⃣ اختار الأصناف اللي عايزها وضيفها للسلة\n" +
+    "3️⃣ أدخل بياناتك (الاسم، العنوان، رقم الموبايل)\n" +
+    "4️⃣ أكد الطلب — وهيوصلك تأكيد فوراً هنا في الشات";
   const buttons: MessengerButton[] = [menuWebUrlButton()];
   return buttonTemplateMessage(text, buttons);
+}
+
+export function contactInfoMessage(): MessengerMessage {
+  const text =
+    "اطلب دلوقتي على الواتساب أو رسايل الصفحة أو اتصل بنا الآن على الأرقام التالية 📞\n\n" +
+    "035710277 - 035710276\n" +
+    "01111470550 - 01212200338\n\n" +
+    "📍 سيدي بشر بحري، 28 شارع 16 – جمال عبد الناصر";
+  return { text };
+}
+
+export function workingHoursMessage(): MessengerMessage {
+  const text = "🕐 مواعيد العمل\nكل يوم من الساعة 12 ضهراً لحد 2 بالليل";
+  return { text };
 }
 
 export function fallbackMessage(): MessengerMessage {

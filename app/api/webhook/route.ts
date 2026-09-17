@@ -1,12 +1,15 @@
 import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import {
+  contactInfoMessage,
   fallbackMessage,
   howToOrderMessage,
   sendMessage,
   welcomeMessageWithMenuButton,
+  workingHoursMessage,
 } from "@/lib/messenger-send-api";
 import type {
+  MessengerMessage,
   WebhookMessagingEvent,
   WebhookPayload,
 } from "@/lib/messenger-types";
@@ -94,7 +97,22 @@ async function handleEvent(event: WebhookMessagingEvent): Promise<void> {
 
   try {
     if (event.postback) {
-      const result = await sendMessage(psid, welcomeMessageWithMenuButton());
+      const payload = event.postback.payload;
+      let reply: MessengerMessage;
+      switch (payload) {
+        case "CONTACT_INFO":
+          reply = contactInfoMessage();
+          break;
+        case "START_ORDER":
+          reply = howToOrderMessage();
+          break;
+        case "WORKING_HOURS":
+          reply = workingHoursMessage();
+          break;
+        default:
+          reply = welcomeMessageWithMenuButton();
+      }
+      const result = await sendMessage(psid, reply);
       if (!result.ok) {
         console.warn(
           "[webhook] postback send failed for",
