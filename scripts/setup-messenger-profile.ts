@@ -24,39 +24,44 @@ if (!PAGE_ACCESS_TOKEN) {
   process.exit(1);
 }
 
-const profile = {
-  persistent_menu: [
-    {
-      locale: "default",
-      composer_input_disabled: false,
-      call_to_actions: [
-        { type: "postback", title: "📋 المنيو والطلب", payload: "START_ORDER" },
-        { type: "postback", title: "📞 الأرقام والعنوان", payload: "CONTACT_INFO" },
-        { type: "postback", title: "🕐 مواعيد العمل", payload: "WORKING_HOURS" },
-      ],
+async function main(): Promise<void> {
+  const profile = {
+    get_started: { payload: "GET_STARTED" },
+    persistent_menu: [
+      {
+        locale: "default",
+        composer_input_disabled: false,
+        call_to_actions: [
+          { type: "postback", title: "📋 المنيو والطلب", payload: "START_ORDER" },
+          { type: "postback", title: "📞 الأرقام والعنوان", payload: "CONTACT_INFO" },
+          { type: "postback", title: "🕐 مواعيد العمل", payload: "WORKING_HOURS" },
+        ],
+      },
+    ],
+    ice_breakers: [
+      { question: "📋 المنيو والطلب", payload: "START_ORDER" },
+      { question: "📞 الأرقام والعنوان", payload: "CONTACT_INFO" },
+      { question: "🕐 مواعيد العمل", payload: "WORKING_HOURS" },
+    ],
+  };
+
+  const res = await fetch(MESSENGER_PROFILE_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${PAGE_ACCESS_TOKEN}`,
     },
-  ],
-  ice_breakers: [
-    { question: "📋 المنيو والطلب", payload: "START_ORDER" },
-    { question: "📞 الأرقام والعنوان", payload: "CONTACT_INFO" },
-    { question: "🕐 مواعيد العمل", payload: "WORKING_HOURS" },
-  ],
-};
+    body: JSON.stringify(profile),
+  });
 
-const res = await fetch(MESSENGER_PROFILE_URL, {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${PAGE_ACCESS_TOKEN}`,
-  },
-  body: JSON.stringify(profile),
-});
+  const data = await res.json();
 
-const data = await res.json();
+  if (!res.ok) {
+    console.error("[setup-messenger-profile] Request failed:", data);
+    process.exit(1);
+  }
 
-if (!res.ok) {
-  console.error("[setup-messenger-profile] Request failed:", data);
-  process.exit(1);
+  console.log("[setup-messenger-profile] Response:", data);
 }
 
-console.log("[setup-messenger-profile] Response:", data);
+main();
