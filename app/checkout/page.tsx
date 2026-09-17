@@ -198,7 +198,7 @@ export default function CheckoutPage() {
     fetch("/api/notify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderId: order.id, psid: order.psid }),
+      body: JSON.stringify({ orderId: order.id }),
       keepalive: true,
     }).catch((err) => console.warn("[notify] fire-and-forget failed:", err));
 

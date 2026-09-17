@@ -12,7 +12,6 @@ export const dynamic = "force-dynamic";
 
 type NotifyBody = {
   orderId?: unknown;
-  psid?: unknown;
 };
 
 export async function POST(request: Request): Promise<Response> {
@@ -27,9 +26,8 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const orderId = typeof body.orderId === "string" ? body.orderId : null;
-  const psid = typeof body.psid === "string" ? body.psid : null;
 
-  if (!orderId || !psid) {
+  if (!orderId) {
     return NextResponse.json(
       { ok: false, error: "missing_fields" },
       { status: 400 }
@@ -60,7 +58,7 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
-  const result = await sendMessage(psid, orderConfirmationMessage(order));
+  const result = await sendMessage(order.psid, orderConfirmationMessage(order));
 
   if (!result.ok) {
     console.error(

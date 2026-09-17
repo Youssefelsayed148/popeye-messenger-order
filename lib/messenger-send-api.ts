@@ -182,13 +182,14 @@ export async function sendMessage(
     return { ok: false, error: "missing_page_access_token" };
   }
 
-  const url = `${SEND_API_URL}?access_token=${encodeURIComponent(token)}`;
-
   let res: Response;
   try {
-    res = await fetch(url, {
+    res = await fetch(SEND_API_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({ recipient: { id: psid }, message }),
     });
   } catch (err) {
