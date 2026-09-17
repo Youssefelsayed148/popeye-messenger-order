@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body {
+    @apply bg-cream text-ink;
+    font-family: var(--font-cairo), system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  .num-badge {
+    font-family: var(--font-display), var(--font-cairo), sans-serif;
+    font-feature-settings: "tnum";
+    letter-spacing: 0.02em;
+  }
+}
