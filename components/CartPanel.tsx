@@ -21,7 +21,7 @@ export function CartPanel() {
     remove,
     clear,
   } = useCart();
-  const { isMessengerContext, isReady } = useMessengerContext();
+  const { isMessengerContext, isReady, debugError } = useMessengerContext();
   const router = useRouter();
   const [images, setImages] = useState<Record<string, string | null>>({});
 
@@ -125,6 +125,15 @@ export function CartPanel() {
               </span>
               <p>لإتمام الطلب، افتح هذه الصفحة من داخل ماسنجر</p>
             </div>
+          )}
+
+          {!inMessenger && debugError && (
+            <p
+              dir="ltr"
+              className="mb-4 break-all rounded-lg bg-ink/5 px-3 py-2 font-mono text-[11px] text-muted"
+            >
+              debug: {debugError}
+            </p>
           )}
 
           {!isHydrated ? (

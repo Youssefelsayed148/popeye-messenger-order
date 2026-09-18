@@ -16,6 +16,7 @@ export type MessengerContextValue = {
   threadId: string | null;
   isMessengerContext: boolean;
   isReady: boolean;
+  debugError: string | null;
 };
 
 const initial: MessengerContextValue = {
@@ -23,6 +24,7 @@ const initial: MessengerContextValue = {
   threadId: null,
   isMessengerContext: false,
   isReady: false,
+  debugError: null,
 };
 
 const MessengerContext = createContext<MessengerContextValue>(initial);
@@ -89,7 +91,7 @@ export function MessengerContextProvider({ children }: { children: ReactNode }) 
     let cancelled = false;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
-    const fallback = () => {
+    const fallback = (debugError: string | null = null) => {
       if (cancelled) return;
       if (process.env.NODE_ENV !== "production") {
         // DEV-ONLY BYPASS: lets checkout be tested outside Messenger's webview.
@@ -99,6 +101,7 @@ export function MessengerContextProvider({ children }: { children: ReactNode }) 
           threadId: null,
           isMessengerContext: true,
           isReady: true,
+          debugError,
         });
         return;
       }
@@ -107,16 +110,24 @@ export function MessengerContextProvider({ children }: { children: ReactNode }) 
         threadId: null,
         isMessengerContext: false,
         isReady: true,
+        debugError,
       });
     };
 
-    timeoutId = setTimeout(fallback, SDK_LOAD_TIMEOUT_MS);
+    timeoutId = setTimeout(
+      () => fallback("SDK load timed out after 3s"),
+      SDK_LOAD_TIMEOUT_MS
+    );
 
     const tryGetContext = () => {
       const appId = process.env.NEXT_PUBLIC_MESSENGER_APP_ID;
       const sdk = window.MessengerExtensions;
-      if (!sdk || !appId) {
-        fallback();
+      if (!sdk) {
+        fallback("MessengerExtensions SDK not found on window");
+        return;
+      }
+      if (!appId) {
+        fallback("NEXT_PUBLIC_MESSENGER_APP_ID is not set");
         return;
       }
       try {
@@ -130,19 +141,19 @@ export function MessengerContextProvider({ children }: { children: ReactNode }) 
               threadId: ctx.thread_id ?? null,
               isMessengerContext: true,
               isReady: true,
+              debugError: null,
             });
           },
           (err) => {
-            console.warn(
-              "[messenger-context] getContext error:",
-              err?.error_message ?? err?.error ?? "unknown"
-            );
-            fallback();
+            const message = `${err?.error ?? "unknown"}: ${err?.error_message ?? "no message"}`;
+            console.warn("[messenger-context] getContext error:", message);
+            fallback(message);
           }
         );
       } catch (err) {
-        console.warn("[messenger-context] getContext threw:", err);
-        fallback();
+        const message = err instanceof Error ? err.message : String(err);
+        console.warn("[messenger-context] getContext threw:", message);
+        fallback(`threw: ${message}`);
       }
     };
 
