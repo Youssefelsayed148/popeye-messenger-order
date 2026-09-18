@@ -15,6 +15,8 @@ export type CartLine = {
   name: string;
   price: number;
   qty: number;
+  offer_id?: string;
+  selections?: string[];
 };
 
 export type LastAdded = { name: string; ts: number };

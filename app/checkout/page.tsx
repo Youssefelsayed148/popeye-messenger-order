@@ -147,7 +147,11 @@ export default function CheckoutPage() {
     setError(null);
 
     const payload = {
-      items: items.map((l) => ({ item_id: l.item_id, qty: l.qty })),
+      items: items.map((l) =>
+        l.offer_id
+          ? { offer_id: l.offer_id, selections: l.selections ?? [], qty: l.qty }
+          : { item_id: l.item_id, qty: l.qty }
+      ),
       zone_id: selectedZone.area_id,
       customer_name: form.customer_name.trim(),
       phone: form.phone.trim(),

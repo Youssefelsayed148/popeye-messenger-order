@@ -44,6 +44,28 @@ export type DeliveryZone = {
   sort_order: number | null;
 };
 
+export type Offer = {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number | null;
+  is_available: boolean;
+  sort_order: number;
+  created_at: string;
+};
+
+export type OfferItem = {
+  id: string;
+  offer_id: string;
+  item_name: string;
+  category_hint: string | null;
+  quantity: number;
+  is_selectable: boolean;
+  is_free: boolean;
+  item_price: number | null;
+  sort_order: number;
+};
+
 export type MenuSeedRow = Pick<
   MenuItem,
   "category" | "name" | "description" | "price" | "image_url" | "sort_order"

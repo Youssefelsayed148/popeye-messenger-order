@@ -2,36 +2,55 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabaseAnon } from "@/lib/supabase";
-import type { MenuItem } from "@/lib/types";
+import type { MenuItem, Offer } from "@/lib/types";
 import { CategoryTabs, type CategoryTab } from "@/components/CategoryTabs";
 import { HowToOrderSteps } from "@/components/HowToOrderSteps";
 import { MenuItemCard } from "@/components/MenuItemCard";
+import { OfferCard } from "@/components/OfferCard";
 import { SkeletonGrid } from "@/components/SkeletonCard";
 import { EmptyState } from "@/components/EmptyState";
 import { FloatingCartButton } from "@/components/FloatingCartButton";
 
+const OFFERS_TAB_ID = "__offers__";
+
 export default function MenuPage() {
   const [items, setItems] = useState<MenuItem[]>([]);
+  const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState<string>("");
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data, error } = await supabaseAnon
-        .from("menu_items")
-        .select(
-          "id, category, name, description, price, image_url, is_available, sort_order, created_at"
-        )
-        .eq("is_available", true)
-        .order("sort_order", { ascending: true });
+      const [menuRes, offersRes] = await Promise.all([
+        supabaseAnon
+          .from("menu_items")
+          .select(
+            "id, category, name, description, price, image_url, is_available, sort_order, created_at"
+          )
+          .eq("is_available", true)
+          .order("sort_order", { ascending: true }),
+        supabaseAnon
+          .from("offers")
+          .select(
+            "id, name, description, price, is_available, sort_order, created_at"
+          )
+          .eq("is_available", true)
+          .order("sort_order", { ascending: true }),
+      ]);
 
       if (cancelled) return;
-      if (error) {
-        console.error("[menu] fetch failed:", error.message);
+      if (menuRes.error) {
+        console.error("[menu] fetch failed:", menuRes.error.message);
         setItems([]);
       } else {
-        setItems(data ?? []);
+        setItems(menuRes.data ?? []);
+      }
+      if (offersRes.error) {
+        console.error("[offers] fetch failed:", offersRes.error.message);
+        setOffers([]);
+      } else {
+        setOffers(offersRes.data ?? []);
       }
       setLoading(false);
     })();
@@ -58,18 +77,21 @@ export default function MenuPage() {
     );
   }, [items]);
 
-  const tabs: CategoryTab[] = useMemo(
-    () =>
-      grouped
-        .map(([category, list]) => ({ id: category, label: category }))
-        .sort((a, b) => a.label.localeCompare(b.label, "ar")),
-    [grouped]
-  );
+  const tabs: CategoryTab[] = useMemo(() => {
+    const categoryTabs = grouped
+      .map(([category, list]) => ({ id: category, label: category }))
+      .sort((a, b) => a.label.localeCompare(b.label, "ar"));
+    return offers.length > 0
+      ? [{ id: OFFERS_TAB_ID, label: "العروض" }, ...categoryTabs]
+      : categoryTabs;
+  }, [grouped, offers]);
 
   const activeGroup = useMemo(
     () => grouped.find(([category]) => category === activeId) ?? grouped[0],
     [grouped, activeId]
   );
+
+  const isOffersActive = activeId === OFFERS_TAB_ID;
 
   useEffect(() => {
     if (!loading && tabs.length > 0 && !activeId) {
@@ -94,6 +116,23 @@ export default function MenuPage() {
       <div className="mt-6">
         {loading ? (
           <SkeletonGrid count={6} />
+        ) : isOffersActive ? (
+          offers.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted">
+              مفيش عروض متاحة دلوقتي
+            </p>
+          ) : (
+            <section className="mb-8 scroll-mt-24">
+              <h2 className="mb-3 border-b-2 border-ink pb-2 font-sans text-lg font-black text-ink">
+                العروض
+              </h2>
+              <div className="grid grid-cols-1 gap-3">
+                {offers.map((offer, idx) => (
+                  <OfferCard key={offer.id} offer={offer} index={idx + 1} />
+                ))}
+              </div>
+            </section>
+          )
         ) : items.length === 0 ? (
           <EmptyState
             title="قريباً"
