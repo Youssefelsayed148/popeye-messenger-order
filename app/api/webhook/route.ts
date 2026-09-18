@@ -104,13 +104,13 @@ async function handleEvent(event: WebhookMessagingEvent): Promise<void> {
           reply = contactInfoMessage();
           break;
         case "START_ORDER":
-          reply = howToOrderMessage();
+          reply = howToOrderMessage(psid);
           break;
         case "WORKING_HOURS":
           reply = workingHoursMessage();
           break;
         default:
-          reply = welcomeMessageWithMenuButton();
+          reply = welcomeMessageWithMenuButton(psid);
       }
       const result = await sendMessage(psid, reply);
       if (!result.ok) {
@@ -129,8 +129,8 @@ async function handleEvent(event: WebhookMessagingEvent): Promise<void> {
       const text = normalizeArabic(rawText);
       const reply =
         text.includes("كيفيه") || text.includes("طلب")
-          ? howToOrderMessage()
-          : fallbackMessage();
+          ? howToOrderMessage(psid)
+          : fallbackMessage(psid);
       const result = await sendMessage(psid, reply);
       if (!result.ok) {
         console.warn(

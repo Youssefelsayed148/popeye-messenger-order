@@ -46,7 +46,7 @@ const initialForm: FormState = {
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, subtotal, isHydrated, clear, openCart } = useCart();
-  const { psid, isMessengerContext, isReady } = useMessengerContext();
+  const { token, isMessengerContext, isReady } = useMessengerContext();
   const [form, setForm] = useState<FormState>(initialForm);
   const [errors, setErrors] = useState<
     Partial<Record<keyof FormState, string>>
@@ -140,7 +140,7 @@ export default function CheckoutPage() {
   };
 
   const handleSubmit = async () => {
-    if (guarded || submitting || !psid) return;
+    if (guarded || submitting || !token) return;
     if (!validate() || !selectedZone) return;
 
     setSubmitting(true);
@@ -157,7 +157,7 @@ export default function CheckoutPage() {
       landmark: form.landmark.trim() || null,
       customer_note: form.customer_note.trim() || null,
       payment_method: form.payment_method,
-      psid,
+      t: token,
     };
 
     let res: Response;

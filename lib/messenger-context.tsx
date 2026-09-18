@@ -8,12 +8,11 @@ import {
   type ReactNode,
 } from "react";
 
-const SDK_SRC = "https://connect.facebook.net/en_US/messenger.Extensions.js";
-const SDK_LOAD_TIMEOUT_MS = 6000;
+const SESSION_STORAGE_KEY = "popeye_psid_token";
 
 export type MessengerContextValue = {
   psid: string | null;
-  threadId: string | null;
+  token: string | null;
   isMessengerContext: boolean;
   isReady: boolean;
   debugError: string | null;
@@ -21,7 +20,7 @@ export type MessengerContextValue = {
 
 const initial: MessengerContextValue = {
   psid: null,
-  threadId: null,
+  token: null,
   isMessengerContext: false,
   isReady: false,
   debugError: null,
@@ -29,81 +28,22 @@ const initial: MessengerContextValue = {
 
 const MessengerContext = createContext<MessengerContextValue>(initial);
 
-type SdkContextPayload = {
-  psid?: string;
-  thread_id?: string;
-};
-
-type SdkContextError = {
-  error?: string;
-  error_message?: string;
-};
-
-declare global {
-  interface Window {
-    MessengerExtensions?: {
-      getContext: (
-        appId: string,
-        success: (ctx: SdkContextPayload) => void,
-        error: (err: SdkContextError) => void
-      ) => void;
-    };
-  }
-}
-
-let sdkLoadStarted = false;
-
-type SdkLoadResult = { errored: boolean };
-
-function loadSdk(): Promise<SdkLoadResult> {
-  if (typeof window === "undefined") return Promise.resolve({ errored: false });
-  if (sdkLoadStarted) return Promise.resolve({ errored: false });
-  sdkLoadStarted = true;
-
-  return new Promise((resolve) => {
-    const existing = document.querySelector(
-      `script[src="${SDK_SRC}"]`
-    ) as HTMLScriptElement | null;
-
-    const script = existing ?? document.createElement("script");
-    if (!existing) {
-      script.src = SDK_SRC;
-      script.async = true;
-      document.head.appendChild(script);
-    }
-
-    let settled = false;
-    const finish = (errored: boolean) => {
-      if (settled) return;
-      settled = true;
-      resolve({ errored });
-    };
-
-    script.addEventListener("load", () => finish(false), { once: true });
-    script.addEventListener("error", () => finish(true), { once: true });
-
-    if (window.MessengerExtensions) finish(false);
-  });
-}
+type VerifyResponse = { ok: boolean; psid?: string; error?: string };
 
 export function MessengerContextProvider({ children }: { children: ReactNode }) {
   const [value, setValue] = useState<MessengerContextValue>(initial);
 
   useEffect(() => {
     let cancelled = false;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-    let scriptLoaded = false;
-    let scriptErrored = false;
-    let readyEventFired = false;
 
-    const fallback = (debugError: string | null = null) => {
+    const fail = (debugError: string) => {
       if (cancelled) return;
       if (process.env.NODE_ENV !== "production") {
-        // DEV-ONLY BYPASS: lets checkout be tested outside Messenger's webview.
+        // DEV-ONLY BYPASS: lets checkout be tested outside Messenger.
         // Remove before shipping to production.
         setValue({
           psid: "TEST_PSID_LOCAL_DEV",
-          threadId: null,
+          token: "TEST_TOKEN_LOCAL_DEV",
           isMessengerContext: true,
           isReady: true,
           debugError,
@@ -112,80 +52,66 @@ export function MessengerContextProvider({ children }: { children: ReactNode }) 
       }
       setValue({
         psid: null,
-        threadId: null,
+        token: null,
         isMessengerContext: false,
         isReady: true,
         debugError,
       });
     };
 
-    timeoutId = setTimeout(() => {
-      fallback(
-        `SDK load timed out after ${SDK_LOAD_TIMEOUT_MS}ms ` +
-          `(scriptLoaded=${scriptLoaded}, scriptErrored=${scriptErrored}, ` +
-          `sdkPresent=${Boolean(window.MessengerExtensions)}, ` +
-          `readyEventFired=${readyEventFired})`
-      );
-    }, SDK_LOAD_TIMEOUT_MS);
+    (async () => {
+      const url = new URL(window.location.href);
+      let token = url.searchParams.get("t");
 
-    const tryGetContext = () => {
-      const appId = process.env.NEXT_PUBLIC_MESSENGER_APP_ID;
-      const sdk = window.MessengerExtensions;
-      if (!sdk) {
-        fallback("MessengerExtensions SDK not found on window");
+      if (!token) {
+        try {
+          token = sessionStorage.getItem(SESSION_STORAGE_KEY);
+        } catch {
+          token = null;
+        }
+      }
+
+      if (!token) {
+        fail("no order token in URL or session");
         return;
       }
-      if (!appId) {
-        fallback("NEXT_PUBLIC_MESSENGER_APP_ID is not set");
-        return;
-      }
+
       try {
-        sdk.getContext(
-          appId,
-          (ctx) => {
-            if (cancelled) return;
-            if (timeoutId) clearTimeout(timeoutId);
-            setValue({
-              psid: ctx.psid ?? null,
-              threadId: ctx.thread_id ?? null,
-              isMessengerContext: true,
-              isReady: true,
-              debugError: null,
-            });
-          },
-          (err) => {
-            const message = `${err?.error ?? "unknown"}: ${err?.error_message ?? "no message"}`;
-            console.warn("[messenger-context] getContext error:", message);
-            fallback(message);
-          }
-        );
+        const res = await fetch("/api/verify-psid-token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token }),
+        });
+        const data = (await res.json()) as VerifyResponse;
+        if (cancelled) return;
+
+        if (!res.ok || !data.ok || !data.psid) {
+          fail(data.error ?? `verify failed (http ${res.status})`);
+          return;
+        }
+
+        try {
+          sessionStorage.setItem(SESSION_STORAGE_KEY, token);
+        } catch {
+          // ignore storage failures (private browsing, etc.)
+        }
+
+        setValue({
+          psid: data.psid,
+          token,
+          isMessengerContext: true,
+          isReady: true,
+          debugError: null,
+        });
       } catch (err) {
+        if (cancelled) return;
         const message = err instanceof Error ? err.message : String(err);
-        console.warn("[messenger-context] getContext threw:", message);
-        fallback(`threw: ${message}`);
+        fail(`verify request threw: ${message}`);
       }
-    };
-
-    const handleReady = () => {
-      readyEventFired = true;
-      tryGetContext();
-    };
-
-    window.addEventListener("MessengerExtensionReady", handleReady);
-
-    loadSdk().then(({ errored }) => {
-      scriptLoaded = !errored;
-      scriptErrored = errored;
-      if (cancelled) return;
-      if (window.MessengerExtensions) {
-        tryGetContext();
-      }
-    });
+    })();
 
     return () => {
       cancelled = true;
-      if (timeoutId) clearTimeout(timeoutId);
-      window.removeEventListener("MessengerExtensionReady", handleReady);
     };
   }, []);
 

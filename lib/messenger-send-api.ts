@@ -9,6 +9,7 @@ import type {
 } from "./messenger-types";
 import type { Order } from "./types";
 import { formatPrice } from "./format";
+import { signPsidToken } from "./psid-token";
 
 const GRAPH_API_VERSION = "v19.0";
 const SEND_API_URL = `https://graph.facebook.com/${GRAPH_API_VERSION}/me/messages`;
@@ -25,33 +26,34 @@ function requireWebviewBase(): string {
   return base.replace(/\/+$/, "");
 }
 
-export function menuWebUrlButton(): WebUrlButton {
+export function menuWebUrlButton(psid: string): WebUrlButton {
+  const url = new URL(`${requireWebviewBase()}/menu`);
+  url.searchParams.set("t", signPsidToken(psid));
   return {
     type: "web_url",
-    url: `${requireWebviewBase()}/menu`,
+    url: url.toString(),
     title: "افتح المنيو 🍗",
-    messenger_extensions: true,
     webview_height_ratio: "full",
   };
 }
 
-export function welcomeMessageWithMenuButton(): MessengerMessage {
+export function welcomeMessageWithMenuButton(psid: string): MessengerMessage {
   const text =
     "أهلاً بيك في مطعم باباي 🍗\n" +
     "اختار من المنيو أو اتصفح الأصناف\n\n" +
     "دوس على ☰ تحت جنب مكان الكتابة عشان تلاقي المنيو، الأرقام، والمواعيد";
-  const buttons: MessengerButton[] = [menuWebUrlButton()];
+  const buttons: MessengerButton[] = [menuWebUrlButton(psid)];
   return buttonTemplateMessage(text, buttons);
 }
 
-export function howToOrderMessage(): MessengerMessage {
+export function howToOrderMessage(psid: string): MessengerMessage {
   const text =
     "🍗 اطلب في دقيقة واحدة!\n" +
     "1️⃣ دوس على الزرار تحت وافتح المنيو\n" +
     "2️⃣ اختار الأصناف اللي عايزها وضيفها للسلة\n" +
     "3️⃣ أدخل بياناتك (الاسم، العنوان، رقم الموبايل)\n" +
     "4️⃣ أكد الطلب — وهيوصلك تأكيد فوراً هنا في الشات";
-  const buttons: MessengerButton[] = [menuWebUrlButton()];
+  const buttons: MessengerButton[] = [menuWebUrlButton(psid)];
   return buttonTemplateMessage(text, buttons);
 }
 
@@ -73,9 +75,9 @@ export function workingHoursMessage(): MessengerMessage {
   return { text };
 }
 
-export function fallbackMessage(): MessengerMessage {
+export function fallbackMessage(psid: string): MessengerMessage {
   const text = "اكتب 'قائمة' عشان تشوف المنيو 🍗";
-  const buttons: MessengerButton[] = [menuWebUrlButton()];
+  const buttons: MessengerButton[] = [menuWebUrlButton(psid)];
   return buttonTemplateMessage(text, buttons);
 }
 

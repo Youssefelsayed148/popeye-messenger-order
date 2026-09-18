@@ -1,6 +1,7 @@
 import "server-only";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { verifyPsidToken } from "@/lib/psid-token";
 import type { Order, OrderItem } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +21,7 @@ type CreateOrderBody = {
   landmark?: unknown;
   customer_note?: unknown;
   payment_method?: unknown;
-  psid?: unknown;
+  t?: unknown;
 };
 
 export async function POST(request: Request): Promise<Response> {
@@ -42,13 +43,18 @@ export async function POST(request: Request): Promise<Response> {
     return NextResponse.json({ error: "missing_zone" }, { status: 400 });
   }
 
-  const psid = typeof body.psid === "string" ? body.psid.trim() : "";
+  const token = typeof body.t === "string" ? body.t : "";
+  const psid = token ? verifyPsidToken(token) : null;
+  if (!psid) {
+    return NextResponse.json({ error: "invalid_token" }, { status: 401 });
+  }
+
   const customerName =
     typeof body.customer_name === "string" ? body.customer_name.trim() : "";
   const phone = typeof body.phone === "string" ? body.phone.trim() : "";
   const address = typeof body.address === "string" ? body.address.trim() : "";
 
-  if (!psid || !customerName || !phone || !address) {
+  if (!customerName || !phone || !address) {
     return NextResponse.json({ error: "missing_fields" }, { status: 400 });
   }
 
