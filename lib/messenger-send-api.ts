@@ -37,7 +37,9 @@ export function menuWebUrlButton(): WebUrlButton {
 
 export function welcomeMessageWithMenuButton(): MessengerMessage {
   const text =
-    "أهلاً بيك في مطعم باباي 🍗\nاختار من المنيو أو اتصفح الأصناف";
+    "أهلاً بيك في مطعم باباي 🍗\n" +
+    "اختار من المنيو أو اتصفح الأصناف\n\n" +
+    "دوس على ☰ تحت جنب مكان الكتابة عشان تلاقي المنيو، الأرقام، والمواعيد";
   const buttons: MessengerButton[] = [menuWebUrlButton()];
   return buttonTemplateMessage(text, buttons);
 }
