@@ -8,6 +8,7 @@ import type { MenuItem, Offer, OfferItem } from "@/lib/types";
 import { useCart } from "@/lib/cart-context";
 import { formatEgp } from "@/lib/format";
 import { FloatingCartButton } from "@/components/FloatingCartButton";
+import { ItemImage } from "@/components/ItemImage";
 
 const SANDWICH_CATEGORY_HINT = "ساندوتش";
 
@@ -41,7 +42,9 @@ export default function OfferDetailPage() {
       const [offerRes, offerItemsRes, menuRes] = await Promise.all([
         supabaseAnon
           .from("offers")
-          .select("id, name, description, price, is_available, sort_order, created_at")
+          .select(
+            "id, name, description, price, image_url, is_available, sort_order, created_at"
+          )
           .eq("id", offerId)
           .eq("is_available", true)
           .maybeSingle(),
@@ -190,7 +193,14 @@ export default function OfferDetailPage() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-3xl px-4 pb-32 pt-4">
-      <div className="flex items-start justify-between gap-3">
+      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-2xl bg-cream">
+        <ItemImage
+          src={offer.image_url}
+          alt={offer.name}
+          sizes="(max-width: 768px) 100vw, 768px"
+        />
+      </div>
+      <div className="mt-4 flex items-start justify-between gap-3">
         <h1 className="font-sans text-2xl font-black leading-tight text-ink">
           {offer.name}
         </h1>

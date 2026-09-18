@@ -33,7 +33,7 @@ export default function MenuPage() {
         supabaseAnon
           .from("offers")
           .select(
-            "id, name, description, price, is_available, sort_order, created_at"
+            "id, name, description, price, image_url, is_available, sort_order, created_at"
           )
           .eq("is_available", true)
           .order("sort_order", { ascending: true }),

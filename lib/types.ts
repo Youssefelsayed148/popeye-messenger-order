@@ -49,6 +49,7 @@ export type Offer = {
   name: string;
   description: string | null;
   price: number | null;
+  image_url: string | null;
   is_available: boolean;
   sort_order: number;
   created_at: string;
