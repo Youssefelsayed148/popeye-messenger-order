@@ -9,7 +9,7 @@ import {
 } from "react";
 
 const SDK_SRC = "https://connect.facebook.net/en_US/messenger.Extensions.js";
-const SDK_LOAD_TIMEOUT_MS = 3000;
+const SDK_LOAD_TIMEOUT_MS = 6000;
 
 export type MessengerContextValue = {
   psid: string | null;
@@ -53,9 +53,11 @@ declare global {
 
 let sdkLoadStarted = false;
 
-function loadSdk(): Promise<void> {
-  if (typeof window === "undefined") return Promise.resolve();
-  if (sdkLoadStarted) return Promise.resolve();
+type SdkLoadResult = { errored: boolean };
+
+function loadSdk(): Promise<SdkLoadResult> {
+  if (typeof window === "undefined") return Promise.resolve({ errored: false });
+  if (sdkLoadStarted) return Promise.resolve({ errored: false });
   sdkLoadStarted = true;
 
   return new Promise((resolve) => {
@@ -71,16 +73,16 @@ function loadSdk(): Promise<void> {
     }
 
     let settled = false;
-    const finish = () => {
+    const finish = (errored: boolean) => {
       if (settled) return;
       settled = true;
-      resolve();
+      resolve({ errored });
     };
 
-    script.addEventListener("load", finish, { once: true });
-    script.addEventListener("error", finish, { once: true });
+    script.addEventListener("load", () => finish(false), { once: true });
+    script.addEventListener("error", () => finish(true), { once: true });
 
-    if (window.MessengerExtensions) finish();
+    if (window.MessengerExtensions) finish(false);
   });
 }
 
@@ -90,6 +92,9 @@ export function MessengerContextProvider({ children }: { children: ReactNode }) 
   useEffect(() => {
     let cancelled = false;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let scriptLoaded = false;
+    let scriptErrored = false;
+    let readyEventFired = false;
 
     const fallback = (debugError: string | null = null) => {
       if (cancelled) return;
@@ -114,10 +119,14 @@ export function MessengerContextProvider({ children }: { children: ReactNode }) 
       });
     };
 
-    timeoutId = setTimeout(
-      () => fallback("SDK load timed out after 3s"),
-      SDK_LOAD_TIMEOUT_MS
-    );
+    timeoutId = setTimeout(() => {
+      fallback(
+        `SDK load timed out after ${SDK_LOAD_TIMEOUT_MS}ms ` +
+          `(scriptLoaded=${scriptLoaded}, scriptErrored=${scriptErrored}, ` +
+          `sdkPresent=${Boolean(window.MessengerExtensions)}, ` +
+          `readyEventFired=${readyEventFired})`
+      );
+    }, SDK_LOAD_TIMEOUT_MS);
 
     const tryGetContext = () => {
       const appId = process.env.NEXT_PUBLIC_MESSENGER_APP_ID;
@@ -157,11 +166,16 @@ export function MessengerContextProvider({ children }: { children: ReactNode }) 
       }
     };
 
-    const handleReady = () => tryGetContext();
+    const handleReady = () => {
+      readyEventFired = true;
+      tryGetContext();
+    };
 
     window.addEventListener("MessengerExtensionReady", handleReady);
 
-    loadSdk().then(() => {
+    loadSdk().then(({ errored }) => {
+      scriptLoaded = !errored;
+      scriptErrored = errored;
       if (cancelled) return;
       if (window.MessengerExtensions) {
         tryGetContext();
